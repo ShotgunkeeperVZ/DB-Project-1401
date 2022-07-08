@@ -11,7 +11,12 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunSQL("""
-        ALTER TABLE playground_product
-        ADD title VARCHAR(255);
+            CREATE TABLE store_product (
+                id int,
+                title varchar(255),
+                price decimal(5, 3),
+                inventory int,
+                last_update timestamp DEFAULT current_timestamp
+            )
         """)
     ]

@@ -12,5 +12,4 @@ review_router.register('review', views.ReviewViewSet, basename='product-review')
 urlpatterns = [
     path('', include(router.urls)),
     path('', include(review_router.urls)),
-
 ]

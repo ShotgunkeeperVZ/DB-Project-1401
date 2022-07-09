@@ -91,6 +91,13 @@ class ReviewViewSet(ModelViewSet, sql_functions.SQLHttpClass):
             return Response({"detail": "Not Found."},
                             status=status.HTTP_404_NOT_FOUND)
 
+    def create(self, request, *args, **kwargs):
+        try:
+            return ModelViewSet.create(self, request, *args, **kwargs)
+        except IntegrityError:
+            return Response({'detail': 'sql constraint failed (rating cannot be less than 0 and more than 5)'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
     def destroy(self, request, *args, **kwargs):
         return self.sql_destroy(request, *args, **kwargs)
 

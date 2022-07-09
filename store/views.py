@@ -4,7 +4,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
-from store.serializers import ProductSerializer, ReviewSerializer, AddProductSerializer
+from store.serializers import ProductSerializer, ReviewSerializer, AddProductSerializer, AddReviewSerializer
 
 
 def dictfetchall(cursor):
@@ -82,7 +82,7 @@ class ProductViewSet(ModelViewSet):
     lookup_field = 'id'
 
     def get_serializer_class(self):
-        if self.request.method in ['POST', 'PUT']:
+        if self.request.method in ['POST', 'PUT', 'PATCH']:
             return AddProductSerializer
         return ProductSerializer
 
@@ -105,12 +105,50 @@ class ProductViewSet(ModelViewSet):
         return Response(serializer.data)
 
 
-# class ReviewViewSet(ModelViewSet):
-#     serializer_class = ReviewSerializer
-#
-#     def get_queryset(self):
-#         return Review.objects.filter(product_id=self.kwargs['product_pk'])
-#
-#     def get_serializer_context(self):
-#         return {'product_id': self.kwargs['product_pk']}
+class ReviewViewSet(ModelViewSet):
+    table_name = "store_review"
+    lookup_field = 'id'
+
+    def get_serializer_class(self):
+        if self.request.method in ['POST', 'PUT', 'PATCH']:
+            return AddReviewSerializer
+        return ReviewSerializer
+
+    def get_serializer_context(self):
+        return {'product_id': self.kwargs['product_id']}
+
+    def get_queryset(self):
+        all_selected = None
+        query = f"""SELECT * FROM store_review
+                    WHERE product_id={self.kwargs['product_id']};"""
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            all_selected = dictfetchall(cursor)
+
+        return all_selected
+
+    def retrieve(self, request, *args, **kwargs):
+        try:
+            # instance = select_one_row(kwargs['id'], self.table_name)
+            query = f"""SELECT * FROM {self.table_name}
+                        WHERE id={kwargs['id']} AND product_id={self.kwargs['product_id']};"""
+            with connection.cursor() as cursor:
+                cursor.execute(query)
+                instance = dictfetchall(cursor)[0]
+
+            serializer = self.get_serializer(instance)
+            return Response(serializer.data)
+        except IndexError:
+            return Response({"detail": "Not Found."},
+                            status=status.HTTP_404_NOT_FOUND)
+
+    def destroy(self, request, *args, **kwargs):
+        delete_one_row(kwargs['id'], self.table_name)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def update(self, request, *args, **kwargs):
+        instance = update_one_row(kwargs['id'], self.table_name, dict(request.data))
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
 

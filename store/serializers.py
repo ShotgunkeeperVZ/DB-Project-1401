@@ -28,9 +28,25 @@ class AddProductSerializer(serializers.Serializer):
         return validated_data
 
 
-class ReviewSerializer(serializers.ModelSerializer):
+class ReviewSerializer(serializers.Serializer):
     id = serializers.IntegerField()
+    product_id = serializers.IntegerField()
+    content = serializers.CharField()
+    rating = serializers.IntegerField()
 
-    # def create(self, validated_data):
-    #     product_id = self.context['product_id']
-    #     return Review.objects.create(product_id=product_id, **validated_data)
+
+class AddReviewSerializer(serializers.Serializer):
+    content = serializers.CharField()
+    rating = serializers.IntegerField()
+
+    def create(self, validated_data):
+        with connection.cursor() as cursor:
+            cursor.execute("""INSERT INTO store_review (product_id, content, rating)
+                              VALUES (%s, %s, %s)""",
+                           [
+                               self.context['product_id'],
+                               validated_data['content'],
+                               validated_data['rating'],
+                           ])
+        return validated_data
+

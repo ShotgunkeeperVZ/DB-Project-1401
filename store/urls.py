@@ -8,11 +8,11 @@ from store import views
 router = DefaultRouter()
 router.register('products', views.ProductViewSet, basename='product')
 
-# review_router = routers.NestedDefaultRouter(router, 'products', lookup='product')
-# review_router.register('review', views.ReviewViewSet, basename='product-review')
+review_router = routers.NestedDefaultRouter(router, 'products', lookup='product')
+review_router.register('review', views.ReviewViewSet, basename='product-review')
 
 urlpatterns = [
     path('', include(router.urls)),
-    # path('', include(review_router.urls)),
+    path('', include(review_router.urls)),
     path('test/', views.test),
 ]

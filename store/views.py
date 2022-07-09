@@ -1,6 +1,6 @@
 from django.db import connection, IntegrityError
 from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, action
 from rest_framework.mixins import CreateModelMixin, RetrieveModelMixin, UpdateModelMixin
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
@@ -8,6 +8,42 @@ from rest_framework.viewsets import ModelViewSet, GenericViewSet
 import sql_functions
 from store.serializers import ProductSerializer, ReviewSerializer, AddProductSerializer, AddReviewSerializer, \
     AddCustomerSerializer, CustomerSerializer
+
+
+def select_customer_by_user_id(user_id):
+    query = f"""SELECT * FROM store_customer
+                WHERE user_id={user_id};"""
+    with connection.cursor() as cursor:
+        cursor.execute(query)
+        one_selected = sql_functions.dictfetchall(cursor)[0]
+
+    return one_selected
+
+
+def update_customer_by_user_id(user_id, data):
+    set_query_assignment = ""
+    valid_data = {data_key: data_value for data_key, data_value
+                  in data.items() if data_value not in [[''], []]}
+
+    for item in valid_data.items():
+        if type(item[1]) is list:
+            set_query_assignment += f"{item[0]}='{item[1][0]}', "
+        else:
+            set_query_assignment += f"{item[0]}='{item[1]}', "
+
+    # to remove ', ' from end of set_query_assignment
+    set_query_assignment = set_query_assignment[:-2]
+
+    query = f"""
+        UPDATE store_customer
+        SET {set_query_assignment} 
+        WHERE user_id={user_id};
+    """
+
+    with connection.cursor() as cursor:
+        cursor.execute(query)
+
+    return select_customer_by_user_id(user_id)
 
 
 @api_view()
@@ -98,7 +134,7 @@ class ReviewViewSet(ModelViewSet, sql_functions.SQLHttpClass):
 
 
 class CustomerViewSet(CreateModelMixin, RetrieveModelMixin, UpdateModelMixin,
-                   GenericViewSet, sql_functions.SQLHttpClass):
+                      GenericViewSet, sql_functions.SQLHttpClass):
     table_name = 'store_customer'
     lookup_field = 'id'
     queryset = sql_functions.select_all_rows(table_name)
@@ -116,3 +152,25 @@ class CustomerViewSet(CreateModelMixin, RetrieveModelMixin, UpdateModelMixin,
 
     def update(self, request, *args, **kwargs):
         return self.sql_update(request, *args, **kwargs)
+
+    @action(detail=False, methods=['GET', 'PUT'])
+    def me(self, request, *args, **kwargs):
+        if request.user.id is None:
+            # customer = self.create(request, *args, **kwargs)
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
+        else:
+            try:
+                customer = select_customer_by_user_id(request.user.id)
+            except IndexError:
+                return Response({"detail": "Not Found."},
+                                status=status.HTTP_404_NOT_FOUND)
+
+        if request.method == 'GET':
+            serializer = CustomerSerializer(customer)
+            return Response(serializer.data)
+        elif request.method == 'PUT':
+            instance = update_customer_by_user_id(request.user.id, dict(request.data))
+            serializer = self.get_serializer(instance, data=request.data)
+            serializer.is_valid(raise_exception=True)
+            return Response(serializer.data)
+

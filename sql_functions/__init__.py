@@ -1,7 +1,8 @@
 from django.db import connection
 from rest_framework import status
+from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
-from rest_framework.viewsets import ModelViewSet
+from rest_framework.viewsets import ModelViewSet, GenericViewSet
 
 
 def dictfetchall(cursor):
@@ -65,3 +66,33 @@ def update_one_row(pk, table_name, data):
         cursor.execute(query)
 
     return select_one_row(pk, table_name)
+
+
+class SQLHttpClass(GenericAPIView):
+    def __init__(self, table_name, **kwargs):
+        super().__init__(**kwargs)
+        self.table_name = table_name
+
+    def get_serializer_class(self):
+        pass
+
+    def sql_retrieve(self, request, *args, **kwargs):
+        try:
+            instance = select_one_row(kwargs['id'], self.table_name)
+            serializer = self.get_serializer(instance)
+            return Response(serializer.data)
+        except IndexError:
+            return Response({"detail": "Not Found."},
+                            status=status.HTTP_404_NOT_FOUND)
+
+    def sql_destroy(self, request, *args, **kwargs):
+        delete_one_row(kwargs['id'], self.table_name)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def sql_update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = update_one_row(kwargs['id'], self.table_name, dict(request.data))
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        return Response(serializer.data)
+

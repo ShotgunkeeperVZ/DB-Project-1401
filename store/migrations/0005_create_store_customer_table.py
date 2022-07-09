@@ -22,6 +22,8 @@ class Migration(migrations.Migration):
                     FOREIGN KEY (user_id)
                     REFERENCES core_user(id)
                     ON DELETE CASCADE
-            )
+            );
+        """, """
+            DROP TABLE store_customer;
         """)
     ]

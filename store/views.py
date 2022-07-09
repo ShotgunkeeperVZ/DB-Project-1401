@@ -18,7 +18,7 @@ def dictfetchall(cursor):
 
 def select_all_rows(table_name):
     all_selected = None
-    query = f"SELECT * FROM {table_name}"
+    query = f"SELECT * FROM {table_name};"
     with connection.cursor() as cursor:
         cursor.execute(query)
         all_selected = dictfetchall(cursor)
@@ -29,7 +29,7 @@ def select_all_rows(table_name):
 def select_one_row(pk, table_name):
     one_selected = None
     query = f"""SELECT * FROM {table_name}
-                WHERE id={pk}"""
+                WHERE id={pk};"""
     with connection.cursor() as cursor:
         cursor.execute(query)
         one_selected = dictfetchall(cursor)[0]
@@ -39,7 +39,7 @@ def select_one_row(pk, table_name):
 
 def delete_one_row(pk, table_name):
     query = f"""DELETE FROM {table_name}
-                WHERE id={pk}"""
+                WHERE id={pk};"""
     with connection.cursor() as cursor:
         cursor.execute(query)
 
@@ -61,7 +61,7 @@ def update_one_row(pk, table_name, data):
     query = f"""
         UPDATE {table_name}
         SET {set_query_assignment} 
-        WHERE id={pk}
+        WHERE id={pk};
     """
 
     with connection.cursor() as cursor:
@@ -93,7 +93,7 @@ class ProductViewSet(ModelViewSet):
             return Response(serializer.data)
         except IndexError:
             return Response({"detail": "Not Found."},
-                status=status.HTTP_404_NOT_FOUND)
+                            status=status.HTTP_404_NOT_FOUND)
 
     def destroy(self, request, *args, **kwargs):
         delete_one_row(kwargs['id'], self.table_name)

@@ -1,4 +1,4 @@
-from django.db import connection
+from django.db import connection, IntegrityError
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -38,8 +38,10 @@ class ProductViewSet(ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
         instance = sql_functions.update_one_row(kwargs['id'], self.table_name, dict(request.data))
-        serializer = self.get_serializer(instance)
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
         return Response(serializer.data)
 
 
@@ -85,8 +87,12 @@ class ReviewViewSet(ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def update(self, request, *args, **kwargs):
-        instance = sql_functions.update_one_row(kwargs['id'], self.table_name, dict(request.data))
-        serializer = self.get_serializer(instance)
-        return Response(serializer.data)
-
-
+        try:
+            partial = kwargs.pop('partial', False)
+            instance = sql_functions.update_one_row(kwargs['id'], self.table_name, dict(request.data))
+            serializer = self.get_serializer(instance, data=request.data, partial=partial)
+            serializer.is_valid(raise_exception=True)
+            return Response(serializer.data)
+        except IntegrityError:
+            return Response({'detail': 'sql constraint failed (rating cannot be less than 0 and more than 5)'},
+                            status=status.HTTP_400_BAD_REQUEST)

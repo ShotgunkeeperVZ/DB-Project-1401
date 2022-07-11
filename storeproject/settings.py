@@ -87,8 +87,8 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': 'storeproject',
         'HOST': 'localhost',
-        'USER': env('POSTGRES_USER'),
-        'PASSWORD': env('POSTGRES_PASSWORD'),
+        'USER': 'username',
+        'PASSWORD': 'password',
         'PORT': '5432',
     }
 }

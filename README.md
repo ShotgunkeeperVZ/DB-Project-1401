@@ -2,9 +2,9 @@
 
 ## Available URLs
   localhost:8000/store/product <br>
-  localhost:8000/store/product/<id> <br>
-  localhost:8000/store/product/<id>/review <br>
-  localhost:8000/store/product/<id>/review/<id> <br>
+  localhost:8000/store/product/id <br>
+  localhost:8000/store/product/id/review <br>
+  localhost:8000/store/product/id/review/id <br>
   
   localhost:8000/auth/user <br>
   localhost:8000/auth/user/me <br>

@@ -53,12 +53,15 @@ def test(request):
 
 class ProductViewSet(ModelViewSet, sql_functions.SQLHttpClass):
     table_name = "store_product"
-    all_products = sql_functions.select_all_rows(table_name)
-    queryset = all_products
+    # all_products = sql_functions.select_all_rows(table_name)
     lookup_field = 'id'
+
+    def get_queryset(self):
+        return self.all_products
 
     def __init__(self, **kwargs):
         super().__init__(self.table_name, **kwargs)
+        self.all_products = sql_functions.select_all_rows(self.table_name)
         # SHM.__init__(self, self.table_name, **kwargs)
 
     def get_serializer_class(self):
@@ -135,9 +138,11 @@ class ReviewViewSet(ModelViewSet, sql_functions.SQLHttpClass):
 
 class CustomerViewSet(CreateModelMixin, RetrieveModelMixin, UpdateModelMixin,
                       GenericViewSet, sql_functions.SQLHttpClass):
-    table_name = 'store_customer'
     lookup_field = 'id'
-    queryset = sql_functions.select_all_rows(table_name)
+    table_name = 'store_customer'
+
+    def get_queryset(self):
+        return sql_functions.select_all_rows(self.table_name)
 
     def __init__(self, **kwargs):
         super().__init__(self.table_name, **kwargs)

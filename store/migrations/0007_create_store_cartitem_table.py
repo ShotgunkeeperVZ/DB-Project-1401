@@ -13,7 +13,7 @@ class Migration(migrations.Migration):
         migrations.RunSQL("""
             CREATE TABLE store_cartitem (
                 id SERIAL,
-                product_id INT,
+                product_id INT NOT NULL,
                 quantity INT NOT NULL DEFAULT 1 CHECK ( quantity > 0 ),
                 PRIMARY KEY (id),
                 CONSTRAINT fk_product

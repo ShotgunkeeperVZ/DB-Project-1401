@@ -101,10 +101,10 @@ class AddCartItemSerializer(serializers.Serializer):
 
 class CartSerializer(serializers.Serializer):
     id = serializers.IntegerField()
-    items = serializers.SerializerMethodField(method_name='test', read_only=True)
+    items = serializers.SerializerMethodField(method_name='get_items', read_only=True)
     # total_price = serializers.IntegerField()
 
-    def test(self, cart):
+    def get_items(self, cart):
         query = f"""
                 SELECT * FROM store_cartitem
                 WHERE cart_id={cart['id']}

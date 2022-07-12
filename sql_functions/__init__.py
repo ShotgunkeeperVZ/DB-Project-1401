@@ -24,7 +24,7 @@ def select_all_rows(table_name):
     return all_selected
 
 
-def select_one_row(pk, table_name):
+def select_one_row_by_id(pk, table_name):
     one_selected = None
     query = f"""SELECT * FROM {table_name}
                 WHERE id={pk};"""
@@ -42,7 +42,7 @@ def delete_one_row(pk, table_name):
         cursor.execute(query)
 
 
-def update_one_row(pk, table_name, data):
+def create_set_query_assignment(data):
     set_query_assignment = ""
     valid_data = {data_key: data_value for data_key, data_value
                   in data.items() if data_value not in [[''], []]}
@@ -54,7 +54,11 @@ def update_one_row(pk, table_name, data):
             set_query_assignment += f"{item[0]}='{item[1]}', "
 
     # to remove ', ' from end of set_query_assignment
-    set_query_assignment = set_query_assignment[:-2]
+    return set_query_assignment[:-2]
+
+
+def update_one_row(pk, table_name, data):
+    set_query_assignment = create_set_query_assignment(data)
 
     query = f"""
         UPDATE {table_name}
@@ -65,7 +69,7 @@ def update_one_row(pk, table_name, data):
     with connection.cursor() as cursor:
         cursor.execute(query)
 
-    return select_one_row(pk, table_name)
+    return select_one_row_by_id(pk, table_name)
 
 
 class SQLHttpClass(GenericAPIView):
@@ -78,7 +82,7 @@ class SQLHttpClass(GenericAPIView):
 
     def sql_retrieve(self, request, *args, **kwargs):
         try:
-            instance = select_one_row(kwargs['id'], self.table_name)
+            instance = select_one_row_by_id(kwargs['id'], self.table_name)
             serializer = self.get_serializer(instance)
             return Response(serializer.data)
         except IndexError:

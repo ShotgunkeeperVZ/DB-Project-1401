@@ -80,16 +80,16 @@ WSGI_APPLICATION = 'storeproject.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'HOST': 'db',
-        'NAME': os.environ.get('POSTGRES_NAME'),
-        'USER': os.environ.get('POSTGRES_USER'),
-        'PASSWORD': os.environ.get('POSTGRES_PASSWORD'),
-        # 'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        # 'HOST': 'localhost',
-        # 'NAME': 'storeproject',
-        # 'USER': 'username',
-        # 'PASSWORD': 'password',
+        # 'ENGINE': 'django.db.backends.postgresql',
+        # 'HOST': 'db',
+        # 'NAME': os.environ.get('POSTGRES_NAME'),
+        # 'USER': os.environ.get('POSTGRES_USER'),
+        # 'PASSWORD': os.environ.get('POSTGRES_PASSWORD'),
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'HOST': 'localhost',
+        'NAME': 'storeproject',
+        'USER': 'username',
+        'PASSWORD': 'password',
         'PORT': '5432',
     }
 }

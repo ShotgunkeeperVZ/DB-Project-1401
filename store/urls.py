@@ -13,6 +13,8 @@ review_router.register('review', views.ReviewViewSet, basename='product-review')
 
 router.register('customers', views.CustomerViewSet, basename='customer')
 
+router.register('carts', views.CartViewSet, basename='cart')
+
 urlpatterns = [
     path('', include(router.urls)),
     path('', include(review_router.urls)),

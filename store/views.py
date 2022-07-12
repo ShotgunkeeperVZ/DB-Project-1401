@@ -7,7 +7,8 @@ from rest_framework.viewsets import ModelViewSet, GenericViewSet
 
 import sql_functions
 from store.serializers import ProductSerializer, ReviewSerializer, AddProductSerializer, AddReviewSerializer, \
-    AddCustomerSerializer, CustomerSerializer
+    AddCustomerSerializer, CustomerSerializer, AddCartItemSerializer, CartItemSerializer, CartSerializer, \
+    AddCartSerializer
 
 
 def select_customer_by_user_id(user_id):
@@ -21,18 +22,7 @@ def select_customer_by_user_id(user_id):
 
 
 def update_customer_by_user_id(user_id, data):
-    set_query_assignment = ""
-    valid_data = {data_key: data_value for data_key, data_value
-                  in data.items() if data_value not in [[''], []]}
-
-    for item in valid_data.items():
-        if type(item[1]) is list:
-            set_query_assignment += f"{item[0]}='{item[1][0]}', "
-        else:
-            set_query_assignment += f"{item[0]}='{item[1]}', "
-
-    # to remove ', ' from end of set_query_assignment
-    set_query_assignment = set_query_assignment[:-2]
+    set_query_assignment = sql_functions.create_set_query_assignment(data)
 
     query = f"""
         UPDATE store_customer
@@ -48,7 +38,7 @@ def update_customer_by_user_id(user_id, data):
 
 @api_view()
 def test(request):
-    return Response(sql_functions.select_one_row(1, 'store_product'))
+    return Response(sql_functions.select_all_rows('store_product'))
 
 
 class ProductViewSet(ModelViewSet, sql_functions.SQLHttpClass):
@@ -57,11 +47,10 @@ class ProductViewSet(ModelViewSet, sql_functions.SQLHttpClass):
     lookup_field = 'id'
 
     def get_queryset(self):
-        return self.all_products
+        return sql_functions.select_all_rows(self.table_name)
 
     def __init__(self, **kwargs):
         super().__init__(self.table_name, **kwargs)
-        self.all_products = sql_functions.select_all_rows(self.table_name)
         # SHM.__init__(self, self.table_name, **kwargs)
 
     def get_serializer_class(self):
@@ -70,7 +59,7 @@ class ProductViewSet(ModelViewSet, sql_functions.SQLHttpClass):
         return ProductSerializer
 
     def retrieve(self, request, *args, **kwargs):
-        return self.sql_retrieve(self.table_name, request, *args, **kwargs)
+        return self.sql_retrieve(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
         return self.sql_destroy(request, *args, **kwargs)
@@ -141,11 +130,11 @@ class CustomerViewSet(CreateModelMixin, RetrieveModelMixin, UpdateModelMixin,
     lookup_field = 'id'
     table_name = 'store_customer'
 
-    def get_queryset(self):
-        return sql_functions.select_all_rows(self.table_name)
-
     def __init__(self, **kwargs):
         super().__init__(self.table_name, **kwargs)
+
+    def get_queryset(self):
+        return sql_functions.select_all_rows(self.table_name)
 
     def get_serializer_class(self):
         if self.request.method in ['PUT', 'POST']:
@@ -179,3 +168,82 @@ class CustomerViewSet(CreateModelMixin, RetrieveModelMixin, UpdateModelMixin,
             serializer.is_valid(raise_exception=True)
             return Response(serializer.data)
 
+
+class CartItemViewSet(ModelViewSet, sql_functions.SQLHttpClass):
+    lookup_field = 'id'
+    table_name = 'store_cartitem'
+
+    def __init__(self, **kwargs):
+        super().__init__(self.table_name, **kwargs)
+
+    def get_serializer_class(self):
+        if self.request.method in ['PUT', 'POST', 'PATCH']:
+            return AddCartItemSerializer
+        return CartItemSerializer
+
+    def get_serializer_context(self):
+        return {'cart_id': self.kwargs['cart_id']}
+
+    def get_queryset(self):
+        query = f"""SELECT * FROM store_cartitem
+                    WHERE cart_id={self.kwargs['product_id']};"""
+        # with connection.cursor() as cursor:
+        #     cursor.execute(query)
+        #     all_selected = sql_functions.dictfetchall(cursor)
+        #
+        # return all_selected
+        return sql_functions.select_all_rows(self.table_name)
+
+    def retrieve(self, request, *args, **kwargs):
+        # try:
+        #     query = f"""SELECT * FROM {self.table_name}
+        #                 WHERE id={kwargs['id']} AND product_id={self.kwargs['product_id']};"""
+        #     with connection.cursor() as cursor:
+        #         cursor.execute(query)
+        #         instance = sql_functions.dictfetchall(cursor)[0]
+        #
+        #     serializer = self.get_serializer(instance)
+        #     return Response(serializer.data)
+        # except IndexError:
+        #     return Response({"detail": "Not Found."},
+        #                     status=status.HTTP_404_NOT_FOUND)
+        return self.sql_retrieve(request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
+        try:
+            return ModelViewSet.create(self, request, *args, **kwargs)
+        except IntegrityError:
+            return Response({'detail': 'sql constraint failed (rating cannot be less than 0 and more than 5)'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+    def destroy(self, request, *args, **kwargs):
+        return self.sql_destroy(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        try:
+            return self.sql_update(request, *args, **kwargs)
+        except IntegrityError:
+            return Response({'detail': 'sql constraint failed (rating cannot be less than 0 and more than 5)'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+
+class CartViewSet(ModelViewSet, sql_functions.SQLHttpClass):
+    table_name = "store_cart"
+    lookup_field = 'id'
+
+    def __init__(self, **kwargs):
+        super().__init__(self.table_name, **kwargs)
+
+    def get_queryset(self):
+        return sql_functions.select_all_rows(self.table_name)
+
+    def get_serializer_class(self):
+        if self.request.method in ['POST', 'PUT', 'PATCH']:
+            return AddCartSerializer
+        return CartSerializer
+
+    def retrieve(self, request, *args, **kwargs):
+        return self.sql_retrieve(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        return self.sql_destroy(request, *args, **kwargs)

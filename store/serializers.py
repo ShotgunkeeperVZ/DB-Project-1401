@@ -1,6 +1,8 @@
 from django.db import connection
 from rest_framework import serializers
 
+import sql_functions
+
 
 class ProductSerializer(serializers.Serializer):
     id = serializers.IntegerField()
@@ -73,3 +75,49 @@ class AddCustomerSerializer(serializers.Serializer):
                            ])
         return validated_data
 
+
+class CartItemSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    product_id = serializers.IntegerField()
+    cart_id = serializers.IntegerField()
+    quantity = serializers.IntegerField()
+
+
+class AddCartItemSerializer(serializers.Serializer):
+    product_id = serializers.IntegerField()
+    quantity = serializers.IntegerField()
+
+    def create(self, validated_data):
+        with connection.cursor() as cursor:
+            cursor.execute("""INSERT INTO store_cartitem (product_id, cart_id, quantity)
+                              VALUES (%s, %s, %s)""",
+                           [
+                               validated_data['product_id'],
+                               validated_data['cart_id'],
+                               validated_data['quantity'],
+                           ])
+        return validated_data
+
+
+class CartSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    items = serializers.SerializerMethodField(method_name='test', read_only=True)
+    # total_price = serializers.IntegerField()
+
+    def test(self, cart):
+        query = f"""
+                SELECT * FROM store_cartitem
+                WHERE cart_id={cart['id']}
+                """
+
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            items = sql_functions.dictfetchall(cursor)
+        return items
+
+
+class AddCartSerializer(serializers.Serializer):
+    def create(self, validated_data):
+        with connection.cursor() as cursor:
+            cursor.execute("""INSERT INTO store_cart DEFAULT VALUES""")
+        return validated_data

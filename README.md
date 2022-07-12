@@ -18,5 +18,6 @@
 
 ## Docker
 start: docker-compose up -d --build <br>
+check logs: docker-compose logs <br>
 stop: docker-compose down -v <br>
 database volume is saved in ./data <br>

@@ -3,12 +3,17 @@
 ## Available URLs
   localhost:8000/store/products <br>
   localhost:8000/store/products/id <br>
-  localhost:8000/store/products/id/review <br>
-  localhost:8000/store/products/id/review/id <br>
+  localhost:8000/store/products/id/reviews <br>
+  localhost:8000/store/products/id/reviews/id <br>
 
   localhost:8000/store/customers/ <br>
   localhost:8000/store/customers/me <br>
   localhost:8000/store/customers/id/ <br>
+
+  localhost:8000/store/carts <br>
+  localhost:8000/store/carts/id <br>
+  localhost:8000/store/carts/id/cartitems <br>
+  localhost:8000/store/carts/id/cartitems/id <br>
   
   localhost:8000/auth/user <br>
   localhost:8000/auth/user/me <br>

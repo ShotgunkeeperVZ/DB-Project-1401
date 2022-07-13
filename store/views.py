@@ -1,7 +1,7 @@
 from django.db import connection, IntegrityError
 from rest_framework import status
 from rest_framework.decorators import api_view, action
-from rest_framework.mixins import CreateModelMixin, RetrieveModelMixin, UpdateModelMixin
+from rest_framework.mixins import CreateModelMixin, RetrieveModelMixin, UpdateModelMixin, DestroyModelMixin
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 
@@ -38,7 +38,14 @@ def update_customer_by_user_id(user_id, data):
 
 @api_view()
 def test(request):
-    return Response(sql_functions.select_all_rows('store_product'))
+    query = f"""SELECT * FROM store_cart
+                WHERE id='c54f645e-0c2a-44b3-8318-b51e8af0cecc'"""
+    with connection.cursor() as cursor:
+        cursor.execute(query)
+        all_selected = sql_functions.dictfetchall(cursor)
+    return Response(all_selected)
+
+    # return Response(sql_functions.select_one_row_by_id(3, 'store_product'))
 
 
 class ProductViewSet(ModelViewSet, sql_functions.SQLHttpClass):
@@ -186,48 +193,56 @@ class CartItemViewSet(ModelViewSet, sql_functions.SQLHttpClass):
 
     def get_queryset(self):
         query = f"""SELECT * FROM store_cartitem
-                    WHERE cart_id={self.kwargs['product_id']};"""
-        # with connection.cursor() as cursor:
-        #     cursor.execute(query)
-        #     all_selected = sql_functions.dictfetchall(cursor)
-        #
-        # return all_selected
-        return sql_functions.select_all_rows(self.table_name)
+                    WHERE cart_id='{self.kwargs['cart_id']}';"""
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            all_selected = sql_functions.dictfetchall(cursor)
+
+        return all_selected
+        # return sql_functions.select_all_rows(self.table_name)
 
     def retrieve(self, request, *args, **kwargs):
-        # try:
-        #     query = f"""SELECT * FROM {self.table_name}
-        #                 WHERE id={kwargs['id']} AND product_id={self.kwargs['product_id']};"""
-        #     with connection.cursor() as cursor:
-        #         cursor.execute(query)
-        #         instance = sql_functions.dictfetchall(cursor)[0]
-        #
-        #     serializer = self.get_serializer(instance)
-        #     return Response(serializer.data)
-        # except IndexError:
-        #     return Response({"detail": "Not Found."},
-        #                     status=status.HTTP_404_NOT_FOUND)
-        return self.sql_retrieve(request, *args, **kwargs)
+        try:
+            query = f"""SELECT * FROM {self.table_name}
+                        WHERE id={kwargs['id']} AND cart_id='{self.kwargs['cart_id']}';"""
+            with connection.cursor() as cursor:
+                cursor.execute(query)
+                instance = sql_functions.dictfetchall(cursor)[0]
+
+            serializer = self.get_serializer(instance)
+            return Response(serializer.data)
+        except IndexError:
+            return Response({"detail": "Not Found."},
+                            status=status.HTTP_404_NOT_FOUND)
+        # return self.sql_retrieve(request, *args, **kwargs)
 
     def create(self, request, *args, **kwargs):
         try:
+            sql_functions.select_one_row_by_id(self.request.data['product_id'], 'store_product')
             return ModelViewSet.create(self, request, *args, **kwargs)
         except IntegrityError:
-            return Response({'detail': 'sql constraint failed (rating cannot be less than 0 and more than 5)'},
+            return Response({'detail': 'sql constraint failed.'},
                             status=status.HTTP_400_BAD_REQUEST)
+        except IndexError:
+            return Response({"detail": "Product does not exist."},
+                            status=status.HTTP_404_NOT_FOUND)
 
     def destroy(self, request, *args, **kwargs):
         return self.sql_destroy(request, *args, **kwargs)
 
     def update(self, request, *args, **kwargs):
         try:
+            sql_functions.select_one_row_by_id(self.request.data['product_id'], 'store_product')
             return self.sql_update(request, *args, **kwargs)
         except IntegrityError:
-            return Response({'detail': 'sql constraint failed (rating cannot be less than 0 and more than 5)'},
+            return Response({'detail': 'sql constraint failed'},
                             status=status.HTTP_400_BAD_REQUEST)
+        except IndexError:
+            return Response({"detail": "Product does not exist."},
+                            status=status.HTTP_404_NOT_FOUND)
 
 
-class CartViewSet(ModelViewSet, sql_functions.SQLHttpClass):
+class CartViewSet(CreateModelMixin, RetrieveModelMixin, DestroyModelMixin, GenericViewSet, sql_functions.SQLHttpClass):
     table_name = "store_cart"
     lookup_field = 'id'
 
@@ -243,7 +258,18 @@ class CartViewSet(ModelViewSet, sql_functions.SQLHttpClass):
         return CartSerializer
 
     def retrieve(self, request, *args, **kwargs):
-        return self.sql_retrieve(request, *args, **kwargs)
+        try:
+            query = f"""SELECT * FROM {self.table_name}
+                        WHERE id='{kwargs['id']}';"""
+            with connection.cursor() as cursor:
+                cursor.execute(query)
+                instance = sql_functions.dictfetchall(cursor)[0]
+
+            serializer = self.get_serializer(instance)
+            return Response(serializer.data)
+        except IndexError:
+            return Response({"detail": "Not Found."},
+                            status=status.HTTP_404_NOT_FOUND)
 
     def destroy(self, request, *args, **kwargs):
         return self.sql_destroy(request, *args, **kwargs)

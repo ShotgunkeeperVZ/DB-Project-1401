@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import connection
 from rest_framework import serializers
 
@@ -78,9 +80,26 @@ class AddCustomerSerializer(serializers.Serializer):
 
 class CartItemSerializer(serializers.Serializer):
     id = serializers.IntegerField()
-    product_id = serializers.IntegerField()
-    cart_id = serializers.IntegerField()
+    # product_id = serializers.IntegerField()
+    item_info = serializers.SerializerMethodField(method_name='get_item', read_only=True)
+    cart_id = serializers.CharField()
     quantity = serializers.IntegerField()
+    total_price = serializers.SerializerMethodField(method_name='cal_total_price', read_only=True)
+
+    def get_item(self, cart_item):
+        query = f"""
+                SELECT id, title, price
+                FROM store_product
+                WHERE id = {cart_item['product_id']}
+                """
+
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            item = sql_functions.dictfetchall(cursor)[0]
+        return item
+
+    def cal_total_price(self, cart_item):
+        return self.get_item(cart_item)['price'] * cart_item['quantity']
 
 
 class AddCartItemSerializer(serializers.Serializer):
@@ -93,21 +112,24 @@ class AddCartItemSerializer(serializers.Serializer):
                               VALUES (%s, %s, %s)""",
                            [
                                validated_data['product_id'],
-                               validated_data['cart_id'],
+                               self.context['cart_id'],
                                validated_data['quantity'],
                            ])
         return validated_data
 
 
 class CartSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
+    id = serializers.CharField()
     items = serializers.SerializerMethodField(method_name='get_items', read_only=True)
-    # total_price = serializers.IntegerField()
+    total_price = serializers.SerializerMethodField(method_name='cal_total_price', read_only=True)
 
     def get_items(self, cart):
         query = f"""
-                SELECT * FROM store_cartitem
-                WHERE cart_id={cart['id']}
+                SELECT store_cartitem.id, product_id, title, price, quantity
+                FROM store_cartitem
+                INNER JOIN store_product
+                ON store_cartitem.product_id = store_product.id
+                WHERE cart_id=\'{cart['id']}\';
                 """
 
         with connection.cursor() as cursor:
@@ -115,9 +137,22 @@ class CartSerializer(serializers.Serializer):
             items = sql_functions.dictfetchall(cursor)
         return items
 
+    def cal_total_price(self, cart):
+        price = 0
+        for item in self.get_items(cart):
+            price += item['price'] * item['quantity']
+        return price
+
 
 class AddCartSerializer(serializers.Serializer):
+    id = serializers.UUIDField(required=False)
+
     def create(self, validated_data):
+        generated_id = uuid.uuid4()
         with connection.cursor() as cursor:
-            cursor.execute("""INSERT INTO store_cart DEFAULT VALUES""")
+            cursor.execute("""INSERT INTO store_cart (id)
+                              VALUES (%s)""",
+                           [generated_id])
+        validated_data = {'id': generated_id}
+
         return validated_data

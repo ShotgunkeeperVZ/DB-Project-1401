@@ -14,8 +14,9 @@ class Migration(migrations.Migration):
         CREATE TABLE store_cartitem (
             id SERIAL,
             product_id INT NOT NULL,
-            cart_id INT NOT NULL,
+            cart_id VARCHAR(36) NOT NULL,
             quantity INT NOT NULL DEFAULT 1 CHECK ( quantity > 0 ),
+            UNIQUE (product_id, cart_id),
             PRIMARY KEY (id),
             CONSTRAINT fk_product
                 FOREIGN KEY (product_id)

@@ -11,8 +11,9 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunSQL("""
+        CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
         CREATE TABLE store_cart (
-            id SERIAL,
+            id VARCHAR(36) DEFAULT uuid_generate_v4 (),
             PRIMARY KEY (id)
         );
     """, """

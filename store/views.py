@@ -6,8 +6,8 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 
 import sql_functions
-from store.serializers import ProductSerializer, ReviewSerializer, AddProductSerializer, AddReviewSerializer, \
-    AddCustomerSerializer, CustomerSerializer, AddCartItemSerializer, CartItemSerializer, CartSerializer, \
+from store.serializers import ProductSerializer, ReviewSerializer, \
+    CustomerSerializer, AddCartItemSerializer, CartItemSerializer, CartSerializer, \
     AddCartSerializer
 
 
@@ -61,8 +61,8 @@ class ProductViewSet(ModelViewSet, sql_functions.SQLHttpClass):
         # SHM.__init__(self, self.table_name, **kwargs)
 
     def get_serializer_class(self):
-        if self.request.method in ['POST', 'PUT', 'PATCH']:
-            return AddProductSerializer
+        # if self.request.method in ['POST', 'PUT', 'PATCH']:
+        #     return AddProductSerializer
         return ProductSerializer
 
     def retrieve(self, request, *args, **kwargs):
@@ -83,8 +83,8 @@ class ReviewViewSet(ModelViewSet, sql_functions.SQLHttpClass):
         super().__init__(self.table_name, **kwargs)
 
     def get_serializer_class(self):
-        if self.request.method in ['POST', 'PUT', 'PATCH']:
-            return AddReviewSerializer
+        # if self.request.method in ['POST', 'PUT', 'PATCH']:
+        #     return AddReviewSerializer
         return ReviewSerializer
 
     def get_serializer_context(self):
@@ -144,8 +144,8 @@ class CustomerViewSet(CreateModelMixin, RetrieveModelMixin, UpdateModelMixin,
         return sql_functions.select_all_rows(self.table_name)
 
     def get_serializer_class(self):
-        if self.request.method in ['PUT', 'POST']:
-            return AddCustomerSerializer
+        # if self.request.method in ['PUT', 'POST']:
+        #     return AddCustomerSerializer
         return CustomerSerializer
 
     def retrieve(self, request, *args, **kwargs):

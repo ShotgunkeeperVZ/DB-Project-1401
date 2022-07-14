@@ -7,13 +7,7 @@ import sql_functions
 
 
 class ProductSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    title = serializers.CharField(max_length=255)
-    price = serializers.DecimalField(max_digits=5, decimal_places=3)
-    inventory = serializers.IntegerField()
-
-
-class AddProductSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
     title = serializers.CharField(max_length=255)
     price = serializers.DecimalField(max_digits=5, decimal_places=3)
     inventory = serializers.IntegerField()
@@ -30,14 +24,27 @@ class AddProductSerializer(serializers.Serializer):
         return validated_data
 
 
+# class AddProductSerializer(serializers.Serializer):
+#     id = serializers.IntegerField(read_only=True)
+#     title = serializers.CharField(max_length=255)
+#     price = serializers.DecimalField(max_digits=5, decimal_places=3)
+#     inventory = serializers.IntegerField()
+#
+#     def create(self, validated_data):
+#         with connection.cursor() as cursor:
+#             cursor.execute("""INSERT INTO store_product (title, price, inventory)
+#                               VALUES (%s, %s, %s)""",
+#                            [
+#                                validated_data['title'],
+#                                validated_data['price'],
+#                                validated_data['inventory'],
+#                            ])
+#         return validated_data
+
+
 class ReviewSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    product_id = serializers.IntegerField()
-    content = serializers.CharField()
-    rating = serializers.IntegerField()
-
-
-class AddReviewSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    product_id = serializers.IntegerField(read_only=True)
     content = serializers.CharField()
     rating = serializers.IntegerField()
 
@@ -53,15 +60,26 @@ class AddReviewSerializer(serializers.Serializer):
         return validated_data
 
 
+# class AddReviewSerializer(serializers.Serializer):
+#     id = serializers.IntegerField(read_only=True)
+#     content = serializers.CharField()
+#     rating = serializers.IntegerField()
+#
+#     def create(self, validated_data):
+#         with connection.cursor() as cursor:
+#             cursor.execute("""INSERT INTO store_review (product_id, content, rating)
+#                               VALUES (%s, %s, %s)""",
+#                            [
+#                                self.context['product_id'],
+#                                validated_data['content'],
+#                                validated_data['rating'],
+#                            ])
+#         return validated_data
+
+
 class CustomerSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
+    id = serializers.IntegerField(read_only=True)
     user_id = serializers.IntegerField()
-    phone = serializers.IntegerField()
-    address = serializers.CharField()
-    postal_code = serializers.CharField()
-
-
-class AddCustomerSerializer(serializers.Serializer):
     phone = serializers.IntegerField()
     address = serializers.CharField()
     postal_code = serializers.CharField()
@@ -76,6 +94,24 @@ class AddCustomerSerializer(serializers.Serializer):
                                validated_data['postal_code'],
                            ])
         return validated_data
+
+
+# class AddCustomerSerializer(serializers.Serializer):
+#     id = serializers.IntegerField(read_only=True)
+#     phone = serializers.IntegerField()
+#     address = serializers.CharField()
+#     postal_code = serializers.CharField()
+#
+#     def create(self, validated_data):
+#         with connection.cursor() as cursor:
+#             cursor.execute("""INSERT INTO store_customer (phone, address, postal_code)
+#                               VALUES (%s, %s, %s)""",
+#                            [
+#                                validated_data['phone'],
+#                                validated_data['address'],
+#                                validated_data['postal_code'],
+#                            ])
+#         return validated_data
 
 
 class CartItemSerializer(serializers.Serializer):
@@ -145,7 +181,7 @@ class CartSerializer(serializers.Serializer):
 
 
 class AddCartSerializer(serializers.Serializer):
-    id = serializers.UUIDField(required=False)
+    id = serializers.UUIDField(read_only=True, required=False)
 
     def create(self, validated_data):
         generated_id = uuid.uuid4()

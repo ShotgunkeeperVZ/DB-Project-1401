@@ -13,10 +13,10 @@ class Migration(migrations.Migration):
         migrations.RunSQL("""
             CREATE TABLE store_customer(
                 id serial,
-                phone INT NOT NULL,
+                phone VARCHAR(255) NOT NULL,
                 address TEXT NOT NULL,
                 postal_code VARCHAR(255) NOT NULL,
-                user_id INT NOT NULL,
+                user_id INT NOT NULL UNIQUE,
                 PRIMARY KEY (id),
                 CONSTRAINT fk_user
                     FOREIGN KEY (user_id)

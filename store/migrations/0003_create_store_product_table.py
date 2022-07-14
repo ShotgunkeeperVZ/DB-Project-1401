@@ -14,8 +14,8 @@ class Migration(migrations.Migration):
             CREATE TABLE store_product (
                 id serial,
                 title varchar(255) NOT NULL ,
-                price decimal(5, 3) NOT NULL ,
-                inventory int NOT NULL ,
+                price decimal(14, 3) NOT NULL CHECK ( price >= 0 ) ,
+                inventory int NOT NULL CHECK ( inventory >= 0 ),
                 last_update timestamp with time zone NOT NULL DEFAULT current_timestamp,
                 primary key (id)
             );

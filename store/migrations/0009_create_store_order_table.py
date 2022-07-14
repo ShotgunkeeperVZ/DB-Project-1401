@@ -13,7 +13,7 @@ class Migration(migrations.Migration):
         migrations.RunSQL("""
             CREATE TABLE store_order(
                 id serial,
-                price DECIMAL(5, 3) NOT NULL,
+                price DECIMAL(14, 3) NOT NULL CHECK ( price >= 0 ),
                 state VARCHAR(255) NOT NULL,
                 delivery_method VARCHAR(255) NOT NULL,
                 customer_id INT NOT NULL,

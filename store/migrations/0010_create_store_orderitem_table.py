@@ -20,10 +20,11 @@ class Migration(migrations.Migration):
             CONSTRAINT fk_product
                 FOREIGN KEY (product_id)
                 REFERENCES store_product(id)
-                ON DELETE CASCADE,
+                ON DELETE RESTRICT,
             CONSTRAINT fk_order
                 FOREIGN KEY (order_id)
                 REFERENCES store_order(id)
+                ON DELETE RESTRICT
         );
         """, """
             DROP TABLE store_orderitem;

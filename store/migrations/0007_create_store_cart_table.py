@@ -6,7 +6,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('store', '0006_change_store_customer_type_phone_to_varchar'),
+        ('store', '0005_create_store_customer_table'),
     ]
 
     operations = [

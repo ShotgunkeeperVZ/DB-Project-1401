@@ -4,6 +4,8 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 
+import sql_functions
+
 
 def dictfetchall(cursor):
     """Return all rows from a cursor as a dict"""
@@ -70,6 +72,23 @@ def update_one_row(pk, table_name, data):
         cursor.execute(query)
 
     return select_one_row_by_id(pk, table_name)
+
+
+def get_most_recent_order_id(table_name):
+    get_most_recent_order_id_query = f"""
+        SELECT id FROM {table_name}
+        ORDER BY id DESC 
+        LIMIT 1
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(get_most_recent_order_id_query)
+        most_recent_order_id = sql_functions.dictfetchall(cursor)[0]['id']
+    return most_recent_order_id
+
+
+def get_last_record_data(table_name):
+    most_recent_order_id = get_most_recent_order_id(table_name)
+    return select_one_row_by_id(most_recent_order_id, table_name)
 
 
 class SQLHttpClass(GenericAPIView):

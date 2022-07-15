@@ -1,6 +1,6 @@
 import uuid
 
-from django.db import connection
+from django.db import connection, transaction
 from rest_framework import serializers
 
 import sql_functions
@@ -264,6 +264,10 @@ class OrderSerializer(serializers.Serializer):
     created_at = serializers.DateTimeField(read_only=True)
 
 
+class UpdateOrderSerilizer(serializers.Serializer):
+    state = serializers.CharField(read_only=True)
+
+
 class CreateOrderSerializer(serializers.Serializer):
     cart_id = serializers.CharField()
 
@@ -350,14 +354,15 @@ class CreateOrderSerializer(serializers.Serializer):
             cursor.execute(delete_cart_query)
 
     def create(self, validated_data):
-        all_item_selected = self.get_cart_items(validated_data['cart_id'])
-        customer_id = self.get_customer_id()
-        delivery_method = self.get_delivery_method(validated_data['cart_id'])
-        self.create_order(all_item_selected, delivery_method, customer_id)
-        order_id = sql_functions.get_most_recent_order_id('store_order')
-        self.add_order_items(all_item_selected, order_id)
-        self.delete_cart(validated_data['cart_id'])
-        return validated_data
+        with transaction.atomic():
+            all_item_selected = self.get_cart_items(validated_data['cart_id'])
+            customer_id = self.get_customer_id()
+            delivery_method = self.get_delivery_method(validated_data['cart_id'])
+            self.create_order(all_item_selected, delivery_method, customer_id)
+            order_id = sql_functions.get_most_recent_order_id('store_order')
+            self.add_order_items(all_item_selected, order_id)
+            self.delete_cart(validated_data['cart_id'])
+            return validated_data
 
 
 class OrderItemSerializer(serializers.Serializer):

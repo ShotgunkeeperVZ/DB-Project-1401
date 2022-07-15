@@ -13,7 +13,7 @@ from store.serializers import ProductSerializer, ReviewSerializer, \
     CustomerSerializer, AddCartItemSerializer, CartItemSerializer, CartSerializer, \
     AddCartSerializer, CreateOrderSerializer, OrderSerializer, OrderItemSerializer, UpdateCartSerializer, \
     AddProductSerializer, AddReviewSerializer, AddCustomerSerializer, UpdateCartItemSerializer, AddCategorySerializer, \
-    CategorySerializer, StoreSerializer, AddStoreSerializer, UpdateProductSerializer
+    CategorySerializer, StoreSerializer, AddStoreSerializer, UpdateProductSerializer, UpdateOrderSerilizer
 
 
 def select_product_store(product_id, store_id):
@@ -492,8 +492,10 @@ class OrderViewSet(ModelViewSet, sql_functions.SQLHttpClass):
         return [IsAuthenticated()]
 
     def get_serializer_class(self):
-        if self.request.method in ['POST']:
+        if self.request.method == 'POST':
             return CreateOrderSerializer
+        elif self.request.method == 'PATCH':
+            return UpdateOrderSerilizer
         return OrderSerializer
 
     def get_serializer_context(self):
@@ -530,12 +532,18 @@ class OrderViewSet(ModelViewSet, sql_functions.SQLHttpClass):
                             status=status.HTTP_404_NOT_FOUND)
 
     def retrieve(self, request, *args, **kwargs):
-        customer_id = select_customer_by_user_id(request.user.id)
+        customer_id = select_customer_by_user_id(request.user.id)['id']
         order_info = sql_functions.select_one_row_by_id(kwargs['id'], self.table_name)
         response = self.sql_retrieve(request, *args, **kwargs)
         if order_info['customer_id'] == customer_id:
             return response
         return Response(status=status.HTTP_403_FORBIDDEN)
+
+    def update(self, request, *args, **kwargs):
+        if request.data['state'] not in ['P', 'C', 'F']:
+            return Response({'detail': 'Selected state is not available'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        return self.sql_update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
         return self.sql_destroy(request, *args, **kwargs)

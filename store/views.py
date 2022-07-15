@@ -12,7 +12,8 @@ from store.permissions import IsAdminOrReadOnly
 from store.serializers import ProductSerializer, ReviewSerializer, \
     CustomerSerializer, AddCartItemSerializer, CartItemSerializer, CartSerializer, \
     AddCartSerializer, CreateOrderSerializer, OrderSerializer, OrderItemSerializer, UpdateCartSerializer, \
-    AddProductSerializer, AddReviewSerializer, AddCustomerSerializer, UpdateCartItemSerializer
+    AddProductSerializer, AddReviewSerializer, AddCustomerSerializer, UpdateCartItemSerializer, AddCategorySerializer, \
+    CategorySerializer
 
 
 def select_customer_by_user_id(user_id):
@@ -58,6 +59,36 @@ def test(request):
     return Response(all_selected)
 
 
+class CategoryViewSet(ModelViewSet, sql_functions.SQLHttpClass):
+    table_name = "store_category"
+    lookup_field = 'id'
+    permission_classes = [IsAdminOrReadOnly]
+
+    def get_queryset(self):
+        return sql_functions.select_all_rows(self.table_name)
+
+    def __init__(self, **kwargs):
+        super().__init__(self.table_name, **kwargs)
+
+    def get_serializer_class(self):
+        if self.request.method in ['POST', 'PUT', 'PATCH']:
+            return AddCategorySerializer
+        return CategorySerializer
+
+    def create(self, request, *args, **kwargs):
+        ModelViewSet.create(self, request, *args, **kwargs)
+        return Response(sql_functions.get_last_record_data(self.table_name), status=status.HTTP_201_CREATED)
+
+    def retrieve(self, request, *args, **kwargs):
+        return self.sql_retrieve(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        return self.sql_destroy(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        return self.sql_update(request, *args, **kwargs)
+
+
 class ProductViewSet(ModelViewSet, sql_functions.SQLHttpClass):
     table_name = "store_product"
     lookup_field = 'id'
@@ -75,8 +106,12 @@ class ProductViewSet(ModelViewSet, sql_functions.SQLHttpClass):
         return ProductSerializer
 
     def create(self, request, *args, **kwargs):
-        ModelViewSet.create(self, request, *args, **kwargs)
-        return Response(sql_functions.get_last_record_data(self.table_name), status=status.HTTP_201_CREATED)
+        try:
+            sql_functions.select_one_row_by_id(self.request.data['category_id'], 'store_category')
+            ModelViewSet.create(self, request, *args, **kwargs)
+            return Response(sql_functions.get_last_record_data(self.table_name), status=status.HTTP_201_CREATED)
+        except IndexError:
+            return Response({'detail': "Category or store not found."}, status=status.HTTP_404_NOT_FOUND)
 
     def retrieve(self, request, *args, **kwargs):
         return self.sql_retrieve(request, *args, **kwargs)
@@ -85,14 +120,18 @@ class ProductViewSet(ModelViewSet, sql_functions.SQLHttpClass):
         return self.sql_destroy(request, *args, **kwargs)
 
     def update(self, request, *args, **kwargs):
-        numeric_fields = ['price', 'inventory']
-        is_not_null, response = self.evaluate_null_numeric_data(request.data, numeric_fields)
-        if not is_not_null:
-            return response
-        is_positive, response = self.evaluate_positive_or_zero_numeric_data(request.data, numeric_fields)
-        if not is_positive:
-            return response
-        return self.sql_update(request, *args, **kwargs)
+        try:
+            numeric_fields = ['price', 'inventory']
+            is_not_null, response = self.evaluate_null_numeric_data(request.data, numeric_fields)
+            if not is_not_null:
+                return response
+            is_positive, response = self.evaluate_positive_or_zero_numeric_data(request.data, numeric_fields)
+            if not is_positive:
+                return response
+            sql_functions.select_one_row_by_id(kwargs['category_id'], 'store_category')
+            return self.sql_update(request, *args, **kwargs)
+        except IndexError:
+            return Response({'detail': "Category or store not found."}, status=status.HTTP_404_NOT_FOUND)
 
 
 class ReviewViewSet(ModelViewSet, sql_functions.SQLHttpClass):

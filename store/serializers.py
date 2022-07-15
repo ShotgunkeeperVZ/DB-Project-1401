@@ -6,26 +6,51 @@ from rest_framework import serializers
 import sql_functions
 
 
+class CategorySerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    name = serializers.CharField(max_length=255)
+
+
+class AddCategorySerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=255)
+
+    def create(self, validated_data):
+        with connection.cursor() as cursor:
+            cursor.execute("""INSERT INTO store_category (name)
+                              VALUES (%s)""",
+                           [
+                               validated_data['name']
+                           ])
+        return validated_data
+
+
 class ProductSerializer(serializers.Serializer):
     id = serializers.IntegerField(read_only=True)
     title = serializers.CharField(max_length=255)
     price = serializers.DecimalField(max_digits=14, decimal_places=4)
     inventory = serializers.IntegerField()
+    category_info = serializers.SerializerMethodField(method_name='get_category_info', read_only=True)
+
+    def get_category_info(self, product):
+        if product['category_id']:
+            return sql_functions.select_one_row_by_id(product['category_id'], 'store_category')
 
 
 class AddProductSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=255)
     price = serializers.DecimalField(max_digits=14, decimal_places=4)
     inventory = serializers.IntegerField()
+    category_id = serializers.IntegerField()
 
     def create(self, validated_data):
         with connection.cursor() as cursor:
-            cursor.execute("""INSERT INTO store_product (title, price, inventory)
-                              VALUES (%s, %s, %s)""",
+            cursor.execute("""INSERT INTO store_product (title, price, inventory, category_id)
+                              VALUES (%s, %s, %s, %s)""",
                            [
                                validated_data['title'],
                                validated_data['price'],
                                validated_data['inventory'],
+                               validated_data['category_id']
                            ])
         return validated_data
 

@@ -6,6 +6,9 @@ from store import views
 
 router = routers.DefaultRouter()
 # router = DefaultRouter()
+
+router.register('category', views.CategoryViewSet, basename='category')
+
 router.register('products', views.ProductViewSet, basename='product')
 
 review_router = routers.NestedDefaultRouter(router, 'products', lookup='product')

@@ -1,5 +1,11 @@
 # DB-Project-1401
 
+## Cart
+  delivery_method for now is consist of "P" and "V" meaning post and vip <br>
+
+# Order
+  state is consist of "P", "C", "F" meaning pending, complete and failed <br>
+
 ## Available URLs
   localhost:8000/store/products <br>
   localhost:8000/store/products/id <br>
@@ -14,6 +20,11 @@
   localhost:8000/store/carts/id <br>
   localhost:8000/store/carts/id/cartitems <br>
   localhost:8000/store/carts/id/cartitems/id <br>
+  
+  localhost:8000/store/orders <br>
+  localhost:8000/store/orders/id <br>
+  localhost:8000/store/orders/id/orderitems <br>
+  localhost:8000/store/orders/id/orderitems/id <br>
   
   localhost:8000/auth/user <br>
   localhost:8000/auth/user/me <br>

@@ -3,10 +3,12 @@ from rest_framework import status
 from rest_framework.decorators import api_view, action
 from rest_framework.mixins import CreateModelMixin, RetrieveModelMixin, UpdateModelMixin, DestroyModelMixin, \
     ListModelMixin
+from rest_framework.permissions import IsAdminUser, IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 
 import sql_functions
+from store.permissions import IsAdminOrReadOnly
 from store.serializers import ProductSerializer, ReviewSerializer, \
     CustomerSerializer, AddCartItemSerializer, CartItemSerializer, CartSerializer, \
     AddCartSerializer, CreateOrderSerializer, OrderSerializer, OrderItemSerializer, UpdateCartSerializer, \
@@ -47,13 +49,11 @@ def test(request):
         all_selected = sql_functions.dictfetchall(cursor)
     return Response(all_selected)
 
-    # return Response(sql_functions.select_one_row_by_id(3, 'store_product'))
-
 
 class ProductViewSet(ModelViewSet, sql_functions.SQLHttpClass):
     table_name = "store_product"
-    # all_products = sql_functions.select_all_rows(table_name)
     lookup_field = 'id'
+    permission_classes = [IsAdminOrReadOnly]
 
     def get_queryset(self):
         return sql_functions.select_all_rows(self.table_name)
@@ -93,6 +93,11 @@ class ReviewViewSet(ModelViewSet, sql_functions.SQLHttpClass):
 
     def __init__(self, **kwargs):
         super().__init__(self.table_name, **kwargs)
+
+    def get_permissions(self):
+        if self.request.method in ['PUT', 'PATCH', 'DELETE']:
+            return [IsAdminUser()]
+        return [AllowAny()]
 
     def get_serializer_class(self):
         if self.request.method in ['POST', 'PUT', 'PATCH']:
@@ -164,10 +169,11 @@ class ReviewViewSet(ModelViewSet, sql_functions.SQLHttpClass):
                             status=status.HTTP_400_BAD_REQUEST)
 
 
-class CustomerViewSet(CreateModelMixin, RetrieveModelMixin, UpdateModelMixin,
-                      GenericViewSet, sql_functions.SQLHttpClass):
+class CustomerViewSet(ModelViewSet, sql_functions.SQLHttpClass):
     lookup_field = 'id'
     table_name = 'store_customer'
+    permission_classes = [IsAuthenticated]
+    http_method_names = ['get', 'put', 'patch', 'post']
 
     def __init__(self, **kwargs):
         super().__init__(self.table_name, **kwargs)
@@ -184,17 +190,18 @@ class CustomerViewSet(CreateModelMixin, RetrieveModelMixin, UpdateModelMixin,
         return CustomerSerializer
 
     def create(self, request, *args, **kwargs):
-        if request.user.id is None:
-            return Response(status=status.HTTP_401_UNAUTHORIZED)
         return ModelViewSet.create(self, request, *args, **kwargs)
 
     def retrieve(self, request, *args, **kwargs):
-        return self.sql_retrieve(request, *args, **kwargs)
+        customer_info = sql_functions.select_one_row_by_id(kwargs['id'], self.table_name)
+        if customer_info['user_id'] == request.user.id:
+            return self.sql_retrieve(request, *args, **kwargs)
+        return Response(status=status.HTTP_403_FORBIDDEN)
 
     def update(self, request, *args, **kwargs):
         return self.sql_update(request, *args, **kwargs)
 
-    @action(detail=False, methods=['GET', 'PUT'])
+    @action(detail=False, methods=['GET', 'PUT'], permission_classes=[IsAuthenticated])
     def me(self, request, *args, **kwargs):
         if request.user.id is None:
             return Response(status=status.HTTP_401_UNAUTHORIZED)
@@ -366,11 +373,17 @@ class CartViewSet(CreateModelMixin, RetrieveModelMixin, UpdateModelMixin,
 
 
 class OrderViewSet(ModelViewSet, sql_functions.SQLHttpClass):
+    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
     table_name = 'store_order'
     lookup_field = 'id'
 
     def __init__(self, **kwargs):
         super().__init__(self.table_name, **kwargs)
+
+    def get_permissions(self):
+        if self.request.method in ['PATCH', 'DELETE']:
+            return [IsAdminUser()]
+        return [IsAuthenticated()]
 
     def get_serializer_class(self):
         if self.request.method in ['POST']:
@@ -381,7 +394,25 @@ class OrderViewSet(ModelViewSet, sql_functions.SQLHttpClass):
         return {'user_id': self.request.user.id}
 
     def get_queryset(self):
-        return sql_functions.select_all_rows(self.table_name)
+        if self.request.user.is_staff:
+            return sql_functions.select_all_rows(self.table_name)
+
+        try:
+            customer_id = select_customer_by_user_id(self.request.user.id)['id']
+        except IndexError:
+            return []
+
+        try:
+            query = f"""
+                SELECT * FROM store_order
+                WHERE customer_id={customer_id}
+            """
+            with connection.cursor() as cursor:
+                cursor.execute(query)
+                all_selected = sql_functions.dictfetchall(cursor)
+            return all_selected
+        except IndexError:
+            return []
 
     def create(self, request, *args, **kwargs):
         try:
@@ -393,7 +424,12 @@ class OrderViewSet(ModelViewSet, sql_functions.SQLHttpClass):
                             status=status.HTTP_404_NOT_FOUND)
 
     def retrieve(self, request, *args, **kwargs):
-        return self.sql_retrieve(request, *args, **kwargs)
+        customer_id = select_customer_by_user_id(request.user.id)
+        order_info = sql_functions.select_one_row_by_id(kwargs['id'], self.table_name)
+        response = self.sql_retrieve(request, *args, **kwargs)
+        if order_info['customer_id'] == customer_id:
+            return response
+        return Response(status=status.HTTP_403_FORBIDDEN)
 
     def destroy(self, request, *args, **kwargs):
         return self.sql_destroy(request, *args, **kwargs)

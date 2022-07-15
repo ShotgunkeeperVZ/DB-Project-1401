@@ -120,6 +120,10 @@ class AddCartItemSerializer(serializers.Serializer):
         return validated_data
 
 
+class UpdateCartItemSerializer(serializers.Serializer):
+    quantity = serializers.IntegerField()
+
+
 class CartSerializer(serializers.Serializer):
     id = serializers.CharField()
     # delivery_method for now is consist of "P" and "V" meaning post and vip

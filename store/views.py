@@ -12,7 +12,7 @@ from store.permissions import IsAdminOrReadOnly
 from store.serializers import ProductSerializer, ReviewSerializer, \
     CustomerSerializer, AddCartItemSerializer, CartItemSerializer, CartSerializer, \
     AddCartSerializer, CreateOrderSerializer, OrderSerializer, OrderItemSerializer, UpdateCartSerializer, \
-    AddProductSerializer, AddReviewSerializer, AddCustomerSerializer
+    AddProductSerializer, AddReviewSerializer, AddCustomerSerializer, UpdateCartItemSerializer
 
 
 def select_customer_by_user_id(user_id):
@@ -230,8 +230,10 @@ class CartItemViewSet(ModelViewSet, sql_functions.SQLHttpClass):
         super().__init__(self.table_name, **kwargs)
 
     def get_serializer_class(self):
-        if self.request.method in ['PUT', 'POST', 'PATCH']:
+        if self.request.method == 'POST':
             return AddCartItemSerializer
+        elif self.request.method in ['PUT', 'PATCH']:
+            return UpdateCartItemSerializer
         return CartItemSerializer
 
     def get_serializer_context(self):
@@ -288,7 +290,7 @@ class CartItemViewSet(ModelViewSet, sql_functions.SQLHttpClass):
 
     def update(self, request, *args, **kwargs):
         try:
-            numeric_fields = ['product_id', 'quantity']
+            numeric_fields = ['quantity']
 
             is_not_null, response = self.evaluate_null_numeric_data(request.data, numeric_fields)
             if not is_not_null:
@@ -297,14 +299,14 @@ class CartItemViewSet(ModelViewSet, sql_functions.SQLHttpClass):
             if not is_positive:
                 return response
 
-            sql_functions.select_one_row_by_id(self.request.data['product_id'], 'store_product')
+            # sql_functions.select_one_row_by_id(self.request.data['product_id'], 'store_product')
             return self.sql_update(request, *args, **kwargs)
         except IntegrityError:
             return Response({'detail': 'sql constraint failed'},
                             status=status.HTTP_400_BAD_REQUEST)
-        except IndexError:
-            return Response({"detail": "Product does not exist."},
-                            status=status.HTTP_404_NOT_FOUND)
+        # except IndexError:
+        #     return Response({"detail": "Product does not exist."},
+        #                     status=status.HTTP_404_NOT_FOUND)
 
 
 class CartViewSet(CreateModelMixin, RetrieveModelMixin, UpdateModelMixin,

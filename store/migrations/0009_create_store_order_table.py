@@ -14,8 +14,7 @@ class Migration(migrations.Migration):
             CREATE TABLE store_order(
                 id serial,
                 price DECIMAL(14, 3) NOT NULL CHECK ( price >= 0 ),
-                state VARCHAR(255) NOT NULL,
-                delivery_method VARCHAR(255) NOT NULL,
+                state VARCHAR(255) NOT NULL CHECK ( state IN ('P', 'C', 'F')),
                 customer_id INT NOT NULL,
                 created_at timestamp with time zone NOT NULL DEFAULT current_timestamp,
                 PRIMARY KEY (id),

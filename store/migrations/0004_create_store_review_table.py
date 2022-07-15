@@ -17,6 +17,7 @@ class Migration(migrations.Migration):
                 content TEXT NOT NULL,
                 review_date timestamp with time zone NOT NULL DEFAULT current_timestamp,
                 rating INT NOT NULL CHECK ( rating >= 0 AND rating <= 5),
+                score INT NOT NULL DEFAULT 0,
                 PRIMARY KEY (id),
                 CONSTRAINT fk_product
                     FOREIGN KEY (product_id)

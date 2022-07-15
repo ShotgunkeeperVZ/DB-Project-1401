@@ -14,10 +14,10 @@ class Migration(migrations.Migration):
         CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
         CREATE TABLE store_cart (
             id VARCHAR(36) DEFAULT uuid_generate_v4 (),
+            delivery_method VARCHAR(255) NOT NULL DEFAULT 'P' CHECK ( delivery_method IN ('P', 'V')),
             PRIMARY KEY (id)
         );
     """, """
         DROP TABLE store_cart;
     """)
     ]
-# total_price INT NOT NULL DEFAULT 0 CHECK ( total_price >= 0 ),

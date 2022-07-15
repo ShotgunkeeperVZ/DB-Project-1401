@@ -12,6 +12,12 @@ class ProductSerializer(serializers.Serializer):
     price = serializers.DecimalField(max_digits=14, decimal_places=4)
     inventory = serializers.IntegerField()
 
+
+class AddProductSerializer(serializers.Serializer):
+    title = serializers.CharField(max_length=255)
+    price = serializers.DecimalField(max_digits=14, decimal_places=4)
+    inventory = serializers.IntegerField()
+
     def create(self, validated_data):
         with connection.cursor() as cursor:
             cursor.execute("""INSERT INTO store_product (title, price, inventory)
@@ -27,6 +33,12 @@ class ProductSerializer(serializers.Serializer):
 class ReviewSerializer(serializers.Serializer):
     id = serializers.IntegerField(read_only=True)
     product_id = serializers.IntegerField(read_only=True)
+    content = serializers.CharField()
+    rating = serializers.IntegerField()
+    score = serializers.IntegerField(read_only=True)
+
+
+class AddReviewSerializer(serializers.Serializer):
     content = serializers.CharField()
     rating = serializers.IntegerField()
 
@@ -45,6 +57,12 @@ class ReviewSerializer(serializers.Serializer):
 class CustomerSerializer(serializers.Serializer):
     id = serializers.IntegerField(read_only=True)
     user_id = serializers.IntegerField(read_only=True)
+    phone = serializers.CharField()
+    address = serializers.CharField()
+    postal_code = serializers.CharField()
+
+
+class AddCustomerSerializer(serializers.Serializer):
     phone = serializers.CharField()
     address = serializers.CharField()
     postal_code = serializers.CharField()
@@ -104,6 +122,8 @@ class AddCartItemSerializer(serializers.Serializer):
 
 class CartSerializer(serializers.Serializer):
     id = serializers.CharField()
+    # delivery_method for now is consist of "P" and "V" meaning post and vip
+    delivery_method = serializers.CharField(read_only=True)
     items = serializers.SerializerMethodField(method_name='get_items', read_only=True)
     total_price = serializers.SerializerMethodField(method_name='cal_total_price', read_only=True)
 
@@ -122,14 +142,23 @@ class CartSerializer(serializers.Serializer):
         return items
 
     def cal_total_price(self, cart):
+        delivery_method = cart['delivery_method']
+        delivery_price = None
+        if delivery_method == 'P':
+            delivery_price = 10
+        elif delivery_method == 'V':
+            delivery_price = 30
+
         price = 0
         for item in self.get_items(cart):
             price += item['price'] * item['quantity']
+        price += delivery_price
         return price
 
 
 class AddCartSerializer(serializers.Serializer):
     id = serializers.UUIDField(read_only=True, required=False)
+    delivery_method = serializers.CharField(read_only=True)
 
     def create(self, validated_data):
         generated_id = uuid.uuid4()
@@ -142,37 +171,46 @@ class AddCartSerializer(serializers.Serializer):
         return validated_data
 
 
+class UpdateCartSerializer(serializers.Serializer):
+    delivery_method = serializers.CharField()
+
+
 class OrderSerializer(serializers.Serializer):
     id = serializers.IntegerField(read_only=True)
     price = serializers.IntegerField(read_only=True)
     # state is consist of "P", "C", "F" meaning pending, complete and failed
     state = serializers.CharField(read_only=True)
-    # delivery_method for now is consist of "P" and "V" meaning post and vip
-    delivery_method = serializers.CharField()
     customer_id = serializers.IntegerField(read_only=True)
     created_at = serializers.DateTimeField(read_only=True)
 
 
 class CreateOrderSerializer(serializers.Serializer):
-    id = serializers.IntegerField(read_only=True)
     cart_id = serializers.CharField()
-    delivery_method = serializers.CharField()
 
-    def cal_total_price(self, items):
-        delivery_method = self.data['delivery_method']
+    def cal_total_price(self, items, delivery_method):
         delivery_price = None
         if delivery_method == 'P':
             delivery_price = 10
         elif delivery_method == 'V':
             delivery_price = 30
+
         price = 0
         for item in items:
             price += item['price'] * item['quantity']
         price += delivery_price
         return price
 
-    def get_cart_items(self, cart_id):
+    def get_delivery_method(self, cart_id):
+        get_delivery_method_query = f"""
+            SELECT delivery_method FROM store_cart
+            WHERE id='{cart_id}';
+        """
+        with connection.cursor() as cursor:
+            cursor.execute(get_delivery_method_query)
+            delivery_method = sql_functions.dictfetchall(cursor)[0]['delivery_method']
+        return delivery_method
 
+    def get_cart_items(self, cart_id):
         get_cart_items_query = f"""
             SELECT store_cartitem.id, product_id, quantity, price
             FROM store_cartitem
@@ -195,13 +233,12 @@ class CreateOrderSerializer(serializers.Serializer):
             customer_id = sql_functions.dictfetchall(cursor)[0]['id']
         return customer_id
 
-    def create_order(self, items, customer_id):
+    def create_order(self, items, delivery_method, customer_id):
         create_order_query = f"""
-            INSERT INTO store_order (price, state, delivery_method, customer_id)
+            INSERT INTO store_order (price, state, customer_id)
             VALUES (
-                {self.cal_total_price(items)},
+                {self.cal_total_price(items, delivery_method)},
                 'P',
-                '{self.data['delivery_method']}',
                 {customer_id}
             )
         """
@@ -235,18 +272,12 @@ class CreateOrderSerializer(serializers.Serializer):
     def create(self, validated_data):
         all_item_selected = self.get_cart_items(validated_data['cart_id'])
         customer_id = self.get_customer_id()
-        self.create_order(all_item_selected, customer_id)
+        delivery_method = self.get_delivery_method(validated_data['cart_id'])
+        self.create_order(all_item_selected, delivery_method, customer_id)
         order_id = sql_functions.get_most_recent_order_id('store_order')
         self.add_order_items(all_item_selected, order_id)
-        # self.delete_cart(validated_data['cart_id'])
+        self.delete_cart(validated_data['cart_id'])
         return validated_data
-
-
-# class UpdateOrderSerializer(serializers.Serializer):
-#     id = serializers.IntegerField(read_only=True)
-#     price = serializers.IntegerField()
-#     state = serializers.CharField()
-#     delivery_method = serializers.CharField()
 
 
 class OrderItemSerializer(serializers.Serializer):

@@ -91,6 +91,13 @@ def get_last_record_data(table_name):
     return select_one_row_by_id(most_recent_order_id, table_name)
 
 
+def evaluate_all_available_data(dict_data: dict):
+    for key in dict_data.keys():
+        if not dict_data[key] and dict_data[key] != 0:
+            return False, key
+    return True, ""
+
+
 class SQLHttpClass(GenericAPIView):
     def __init__(self, table_name, **kwargs):
         super().__init__(**kwargs)
@@ -114,8 +121,38 @@ class SQLHttpClass(GenericAPIView):
 
     def sql_update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
+        instance = select_one_row_by_id(kwargs['id'], self.table_name)
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
         instance = update_one_row(kwargs['id'], self.table_name, dict(request.data))
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         return Response(serializer.data)
 
+    def evaluate_null_numeric_data(self, dict_data, numeric_fields):
+        for key in numeric_fields:
+            if key in dict_data.keys():
+                if not dict_data[key] and dict_data[key] != 0:
+                    response = Response({'detail': f'field \'{key}\' cannot be empty.'},
+                                        status=status.HTTP_400_BAD_REQUEST)
+                    return False, response
+        return True, ""
+
+    def evaluate_positive_or_zero_numeric_data(self, dict_data, numeric_fields):
+        for field in numeric_fields:
+            if field in dict_data.keys():
+                if dict_data[field] < 0:
+                    response = Response({'detail': f'field \'{field}\' should be zero or positive.'},
+                                        status=status.HTTP_400_BAD_REQUEST)
+                    return False, response
+        return True, ""
+
+    def evaluate_positive_numeric_data(self, dict_data, numeric_fields):
+        for field in numeric_fields:
+            if field in dict_data.keys():
+                if int(dict_data[field]) <= 0:
+                    print('hello')
+                    response = Response({'detail': f'field \'{field}\' should be positive.'},
+                                    status=status.HTTP_400_BAD_REQUEST)
+                    return False, response
+        return True, ""

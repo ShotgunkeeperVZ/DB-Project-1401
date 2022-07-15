@@ -72,7 +72,7 @@ def test(request):
 class CategoryViewSet(ModelViewSet, sql_functions.SQLHttpClass):
     table_name = "store_category"
     lookup_field = 'id'
-    # permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [IsAdminOrReadOnly]
 
     def get_queryset(self):
         return sql_functions.select_all_rows(self.table_name)
@@ -139,7 +139,7 @@ class StoreViewSet(ModelViewSet, sql_functions.SQLHttpClass):
 class ProductViewSet(ModelViewSet, sql_functions.SQLHttpClass):
     table_name = "store_product"
     lookup_field = 'id'
-    # permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [IsAdminOrReadOnly]
 
     def get_queryset(self):
         return sql_functions.select_all_rows(self.table_name)

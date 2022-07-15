@@ -1,0 +1,4 @@
+<template>
+  <nuxt-page/>
+</template>
+

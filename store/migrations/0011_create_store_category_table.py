@@ -13,7 +13,7 @@ class Migration(migrations.Migration):
         migrations.RunSQL("""
             CREATE TABLE store_category (
                 id serial,
-                name VARCHAR(255) NOT NULL,
+                name VARCHAR(255) NOT NULL UNIQUE,
                 PRIMARY KEY (id)
             );
         """, """

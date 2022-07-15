@@ -13,7 +13,17 @@ from store.serializers import ProductSerializer, ReviewSerializer, \
     CustomerSerializer, AddCartItemSerializer, CartItemSerializer, CartSerializer, \
     AddCartSerializer, CreateOrderSerializer, OrderSerializer, OrderItemSerializer, UpdateCartSerializer, \
     AddProductSerializer, AddReviewSerializer, AddCustomerSerializer, UpdateCartItemSerializer, AddCategorySerializer, \
-    CategorySerializer
+    CategorySerializer, StoreSerializer, AddStoreSerializer, UpdateProductSerializer
+
+
+def select_product_store(product_id, store_id):
+    query = f"""SELECT * FROM store_product_stores
+                WHERE product_id={product_id} AND store_id={store_id};"""
+    with connection.cursor() as cursor:
+        cursor.execute(query)
+        one_selected = sql_functions.dictfetchall(cursor)
+
+    return one_selected
 
 
 def select_customer_by_user_id(user_id):
@@ -62,7 +72,7 @@ def test(request):
 class CategoryViewSet(ModelViewSet, sql_functions.SQLHttpClass):
     table_name = "store_category"
     lookup_field = 'id'
-    permission_classes = [IsAdminOrReadOnly]
+    # permission_classes = [IsAdminOrReadOnly]
 
     def get_queryset(self):
         return sql_functions.select_all_rows(self.table_name)
@@ -89,8 +99,8 @@ class CategoryViewSet(ModelViewSet, sql_functions.SQLHttpClass):
         return self.sql_update(request, *args, **kwargs)
 
 
-class ProductViewSet(ModelViewSet, sql_functions.SQLHttpClass):
-    table_name = "store_product"
+class StoreViewSet(ModelViewSet, sql_functions.SQLHttpClass):
+    table_name = "store_stores"
     lookup_field = 'id'
     permission_classes = [IsAdminOrReadOnly]
 
@@ -102,12 +112,53 @@ class ProductViewSet(ModelViewSet, sql_functions.SQLHttpClass):
 
     def get_serializer_class(self):
         if self.request.method in ['POST', 'PUT', 'PATCH']:
+            return AddStoreSerializer
+        return StoreSerializer
+
+    def create(self, request, *args, **kwargs):
+        try:
+            ModelViewSet.create(self, request, *args, **kwargs)
+            return Response(sql_functions.get_last_record_data(self.table_name), status=status.HTTP_201_CREATED)
+        except IntegrityError:
+            return Response({'detail': "Sql constraint failed."}, status=status.HTTP_400_BAD_REQUEST)
+
+    def retrieve(self, request, *args, **kwargs):
+        return self.sql_retrieve(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        return self.sql_destroy(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        try:
+            sql_functions.select_one_row_by_id(kwargs['id'], 'store_stores')
+            return self.sql_update(request, *args, **kwargs)
+        except IntegrityError:
+            return Response({'detail': "Sql constraint failed."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ProductViewSet(ModelViewSet, sql_functions.SQLHttpClass):
+    table_name = "store_product"
+    lookup_field = 'id'
+    # permission_classes = [IsAdminOrReadOnly]
+
+    def get_queryset(self):
+        return sql_functions.select_all_rows(self.table_name)
+
+    def __init__(self, **kwargs):
+        super().__init__(self.table_name, **kwargs)
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
             return AddProductSerializer
+        elif self.request.method in ['PUT', 'PATCH']:
+            return UpdateProductSerializer
         return ProductSerializer
 
     def create(self, request, *args, **kwargs):
         try:
             sql_functions.select_one_row_by_id(self.request.data['category_id'], 'store_category')
+            sql_functions.select_one_row_by_id(self.request.data['store_id'], 'store_stores')
+            # select_product_store(self.request.data['product_id'], self.request.data['store_id'])
             ModelViewSet.create(self, request, *args, **kwargs)
             return Response(sql_functions.get_last_record_data(self.table_name), status=status.HTTP_201_CREATED)
         except IndexError:
@@ -128,7 +179,8 @@ class ProductViewSet(ModelViewSet, sql_functions.SQLHttpClass):
             is_positive, response = self.evaluate_positive_or_zero_numeric_data(request.data, numeric_fields)
             if not is_positive:
                 return response
-            sql_functions.select_one_row_by_id(kwargs['category_id'], 'store_category')
+            if 'category_id' in request.data.keys():
+                sql_functions.select_one_row_by_id(self.request.data['category_id'], 'store_category')
             return self.sql_update(request, *args, **kwargs)
         except IndexError:
             return Response({'detail': "Category or store not found."}, status=status.HTTP_404_NOT_FOUND)

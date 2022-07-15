@@ -141,7 +141,7 @@ class SQLHttpClass(GenericAPIView):
     def evaluate_positive_or_zero_numeric_data(self, dict_data, numeric_fields):
         for field in numeric_fields:
             if field in dict_data.keys():
-                if dict_data[field] < 0:
+                if float(dict_data[field]) < 0:
                     response = Response({'detail': f'field \'{field}\' should be zero or positive.'},
                                         status=status.HTTP_400_BAD_REQUEST)
                     return False, response

@@ -24,6 +24,40 @@ class AddCategorySerializer(serializers.Serializer):
         return validated_data
 
 
+class StoreSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    name = serializers.CharField(max_length=255)
+    owner = serializers.CharField(max_length=255)
+    products = serializers.SerializerMethodField(method_name='get_products', read_only=True)
+
+    def get_products(self, store):
+        query = f"""
+            SELECT store_product.id, title, price, inventory, category_id
+            FROM store_product, store_product_stores
+            WHERE product_id=store_product.id AND store_id={store['id']};
+        """
+
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            items = sql_functions.dictfetchall(cursor)
+        return items
+
+
+class AddStoreSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=255)
+    owner = serializers.CharField(max_length=255)
+
+    def create(self, validated_data):
+        with connection.cursor() as cursor:
+            cursor.execute("""INSERT INTO store_stores (name, owner)
+                              VALUES (%s, %s)""",
+                           [
+                               validated_data['name'],
+                               validated_data['owner']
+                           ])
+        return validated_data
+
+
 class ProductSerializer(serializers.Serializer):
     id = serializers.IntegerField(read_only=True)
     title = serializers.CharField(max_length=255)
@@ -41,6 +75,7 @@ class AddProductSerializer(serializers.Serializer):
     price = serializers.DecimalField(max_digits=14, decimal_places=4)
     inventory = serializers.IntegerField()
     category_id = serializers.IntegerField()
+    store_id = serializers.IntegerField()
 
     def create(self, validated_data):
         with connection.cursor() as cursor:
@@ -52,7 +87,23 @@ class AddProductSerializer(serializers.Serializer):
                                validated_data['inventory'],
                                validated_data['category_id']
                            ])
+            product_id = sql_functions.get_last_record_data('store_product')['id']
+            print(product_id)
+            cursor.execute("""
+                INSERT INTO store_product_stores (product_id, store_id)
+                VALUES (%s, %s)
+            """, [
+                    product_id,
+                    validated_data['store_id']
+            ])
         return validated_data
+
+
+class UpdateProductSerializer(serializers.Serializer):
+    title = serializers.CharField(max_length=255)
+    price = serializers.DecimalField(max_digits=14, decimal_places=4)
+    inventory = serializers.IntegerField()
+    category_id = serializers.IntegerField()
 
 
 class ReviewSerializer(serializers.Serializer):

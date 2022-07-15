@@ -13,7 +13,7 @@ class Migration(migrations.Migration):
         migrations.RunSQL("""
             CREATE TABLE store_stores (
                 id serial,
-                name VARCHAR(255) NOT NULL,
+                name VARCHAR(255) NOT NULL UNIQUE,
                 owner VARCHAR(255) NOT NULL,
                 PRIMARY KEY (id)
             );

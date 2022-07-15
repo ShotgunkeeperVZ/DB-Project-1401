@@ -40,6 +40,14 @@ def update_customer_by_user_id(user_id, data):
     return select_customer_by_user_id(user_id)
 
 
+def select_cart_item_by_id_cart_id(pk, cart_id):
+    query = f"""SELECT * FROM store_cartitem
+                WHERE id={pk} AND cart_id='{cart_id}';"""
+    with connection.cursor() as cursor:
+        cursor.execute(query)
+        instance = sql_functions.dictfetchall(cursor)[0]
+    return instance
+
 @api_view()
 def test(request):
     query = f"""SELECT * FROM store_cartitem
@@ -250,11 +258,7 @@ class CartItemViewSet(ModelViewSet, sql_functions.SQLHttpClass):
 
     def retrieve(self, request, *args, **kwargs):
         try:
-            query = f"""SELECT * FROM {self.table_name}
-                        WHERE id={kwargs['id']} AND cart_id='{self.kwargs['cart_id']}';"""
-            with connection.cursor() as cursor:
-                cursor.execute(query)
-                instance = sql_functions.dictfetchall(cursor)[0]
+            instance = select_cart_item_by_id_cart_id(kwargs['id'], kwargs['cart_id'])
 
             serializer = self.get_serializer(instance)
             return Response(serializer.data)
@@ -273,7 +277,10 @@ class CartItemViewSet(ModelViewSet, sql_functions.SQLHttpClass):
             if not is_positive:
                 return response
 
-            sql_functions.select_one_row_by_id(self.request.data['product_id'], 'store_product')
+            product_info = sql_functions.select_one_row_by_id(self.request.data['product_id'], 'store_product')
+            if int(request.data['quantity']) > int(product_info['inventory']):
+                return Response({'detail': 'quantity cannot be more than inventory'},
+                                status=status.HTTP_400_BAD_REQUEST)
 
             ModelViewSet.create(self, request, *args, **kwargs)
             return Response(sql_functions.get_last_record_data(self.table_name), status=status.HTTP_201_CREATED)
@@ -299,14 +306,20 @@ class CartItemViewSet(ModelViewSet, sql_functions.SQLHttpClass):
             if not is_positive:
                 return response
 
+            cart_item_info = select_cart_item_by_id_cart_id(kwargs['id'], kwargs['cart_id'])
+            product_info = sql_functions.select_one_row_by_id(cart_item_info['product_id'], 'store_product')
+            if int(request.data['quantity']) > product_info['inventory']:
+                return Response({'detail': 'quantity cannot be more than inventory'},
+                                status=status.HTTP_400_BAD_REQUEST)
+
             # sql_functions.select_one_row_by_id(self.request.data['product_id'], 'store_product')
             return self.sql_update(request, *args, **kwargs)
         except IntegrityError:
             return Response({'detail': 'sql constraint failed'},
                             status=status.HTTP_400_BAD_REQUEST)
-        # except IndexError:
-        #     return Response({"detail": "Product does not exist."},
-        #                     status=status.HTTP_404_NOT_FOUND)
+        except IndexError:
+            return Response({"detail": "Item does not exist."},
+                            status=status.HTTP_404_NOT_FOUND)
 
 
 class CartViewSet(CreateModelMixin, RetrieveModelMixin, UpdateModelMixin,

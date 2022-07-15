@@ -151,7 +151,6 @@ class SQLHttpClass(GenericAPIView):
         for field in numeric_fields:
             if field in dict_data.keys():
                 if int(dict_data[field]) <= 0:
-                    print('hello')
                     response = Response({'detail': f'field \'{field}\' should be positive.'},
                                     status=status.HTTP_400_BAD_REQUEST)
                     return False, response
